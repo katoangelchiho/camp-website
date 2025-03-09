@@ -7,56 +7,182 @@
     #guessGame {
       margin: 20px;
     }
-
     #guessGame input {
       width: 200px;
+    }
+    .highlight {
+      font-weight: bold;
+      color: #d9534f;
+    }
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: #f44336;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 999;
     }
   </style>
 </head>
 <body>
-
 <main class="container">
-  <h1>数当てゲーム (1~100)</h1>
-  
+  <h1>数当てゲーム</h1>
   <div id="guessGame">
+    <p>1〜20の数字を入れてください！ </p>
+    <p>残り回数: <span id="attempts">3</span>回</p>
     <label for="guessField">予想: </label>
-    <input type="number" min="1" max="100" id="guessField">
+    <input type="number" min="1" max="20" id="guessField">
     <input type="submit" value="予想を入力" id="guessSubmit">
     <p id="guessResult"></p>
+    <button id="resetButton" style="display: none;">もう一度遊ぶ</button>
   </div>
 </main>
-
 <script>
-  // 1から100までのランダムな整数を生成し、コンソールにログを出力
-  let answerNumber = Math.floor(Math.random() * 100) + 1;
+  // 1から20までのランダムな整数を生成し、コンソールにログを出力
+  let answerNumber = Math.floor(Math.random() * 20) + 1;
   console.log('正解は' + answerNumber);
-
-  // 数値入力フィールドを取得
+  
+  // 要素を取得
   let guessField = document.querySelector('#guessField');
-
-  // submitボタンを取得
   let guessSubmit = document.querySelector('#guessSubmit');
-
-  // 結果を表示する要素を取得
   let guessResult = document.querySelector('#guessResult');
-
+  let attemptsDisplay = document.querySelector('#attempts');
+  let resetButton = document.querySelector('#resetButton');
+  
+  // 残りの試行回数
+  let attemptsLeft = 3;
+  
   // ユーザーの入力をチェックし、結果を表示
   function checkGuess() {
+    // 残りの試行回数がなければ何もしない
+    if (attemptsLeft <= 0) return;
+    
     // ユーザの入力した値を取得
     let userGuess = Number(guessField.value);
-
+    
+    // 入力が空または範囲外の場合は処理しない
+    if (isNaN(userGuess) || userGuess < 1 || userGuess > 20) {
+      guessResult.textContent = '1から20までの数字を入力してください';
+      return;
+    }
+    
+    // 試行回数を減らす
+    attemptsLeft--;
+    attemptsDisplay.textContent = attemptsLeft;
+    
     if (userGuess === answerNumber) { // ユーザの入力が正解
-      guessResult.textContent = '正解です！';
+      guessResult.innerHTML = '<span class="highlight">正解です！</span>';
+      endGame(true);
     } else if (userGuess < answerNumber) { // ユーザの入力が正解より小さい
       guessResult.textContent = 'もっと大きいです';
     } else if (userGuess > answerNumber) { // ユーザの入力が正解より大きい
       guessResult.textContent = 'もっと小さいです';
     }
+    
+    // 試行回数が0になったらゲーム終了
+    if (attemptsLeft === 0 && userGuess !== answerNumber) {
+      endGame(false);
+    }
+    
+    // 入力フィールドをクリアしてフォーカス
+    guessField.value = '';
+    guessField.focus();
   }
-
-  // submitがクリックされたときに、checkGuess関数を呼び出す
+  
+  // ゲーム終了時の処理
+  function endGame(isWin) {
+    guessField.disabled = true;
+    guessSubmit.disabled = true;
+    
+    if (!isWin) {
+      guessResult.innerHTML += '<br><span class="highlight">ゲームオーバー！正解は ' + answerNumber + ' でした。</span>';
+    } else {
+      // 正解の場合は花吹雪を表示
+      createConfetti();
+    }
+    
+    resetButton.style.display = 'block';
+  }
+  
+  // 花吹雪エフェクトを作成する関数
+  function createConfetti() {
+    const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+    const confettiCount = 150;
+    
+    for (let i = 0; i < confettiCount; i++) {
+      setTimeout(() => {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        
+        // ランダムな色を設定
+        const colorIndex = Math.floor(Math.random() * colors.length);
+        confetti.style.backgroundColor = colors[colorIndex];
+        
+        // ランダムなサイズを設定（5px〜15px）
+        const size = Math.random() * 10 + 5;
+        confetti.style.width = `${size}px`;
+        confetti.style.height = `${size}px`;
+        
+        // ランダムな形（円または四角）
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        
+        // 開始位置を画面上部中央付近にランダムに設定
+        const startPositionX = Math.random() * window.innerWidth;
+        confetti.style.left = `${startPositionX}px`;
+        confetti.style.top = '0';
+        
+        // 紙吹雪を追加
+        document.body.appendChild(confetti);
+        
+        // アニメーションで落下させる
+        const animationDuration = Math.random() * 3 + 2; // 2〜5秒
+        const horizontalSwing = (Math.random() - 0.5) * 30; // 左右の揺れ
+        
+        confetti.animate([
+          { transform: 'translate(0, 0) rotate(0deg)' },
+          { transform: `translate(${horizontalSwing}px, ${window.innerHeight}px) rotate(${Math.random() * 360}deg)` }
+        ], {
+          duration: animationDuration * 1000,
+          easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)'
+        });
+        
+        // アニメーション終了後に削除
+        setTimeout(() => {
+          document.body.removeChild(confetti);
+        }, animationDuration * 1000);
+      }, Math.random() * 500); // 0〜500msの間でランダムなタイミングで開始
+    }
+  }
+  
+  // ゲームをリセット
+  function resetGame() {
+    answerNumber = Math.floor(Math.random() * 20) + 1;
+    console.log('正解は' + answerNumber);
+    
+    attemptsLeft = 10;
+    attemptsDisplay.textContent = attemptsLeft;
+    
+    guessField.disabled = false;
+    guessSubmit.disabled = false;
+    guessField.value = '';
+    guessResult.textContent = '';
+    
+    resetButton.style.display = 'none';
+    
+    guessField.focus();
+  }
+  
+  // イベントリスナーを設定
   guessSubmit.addEventListener('click', checkGuess);
+  resetButton.addEventListener('click', resetGame);
+  
+  // Enterキーでも予想を送信できるようにする
+  guessField.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      checkGuess();
+    }
+  });
 </script>
-
 </body>
 </html>
