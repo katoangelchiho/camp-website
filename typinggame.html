@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイピングゲーム</title>
+    <style>
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+            text-align: center;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #ff6b6b;
+        }
+        
+        .screen {
+            display: none;
+        }
+        
+        .active {
+            display: block;
+        }
+        
+        button {
+            background-color: #4ecdc4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #45b7af;
+        }
+        
+        .word-display {
+            font-size: 32px;
+            margin: 20px 0;
+            min-height: 40px;
+        }
+        
+        .typed-char {
+            color: #4ecdc4;
+            text-decoration: underline;
+        }
+        
+        .wrong-char {
+            color: #ff6b6b;
+            text-decoration: line-through;
+        }
+        
+        .current-char {
+            background-color: #ffe66d;
+        }
+        
+        input {
+            padding: 10px;
+            font-size: 18px;
+            width: 80%;
+            max-width: 400px;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .stat {
+            background-color: #ffe66d;
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #4ecdc4;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .timer-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #ddd;
+            margin: 10px 0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .timer-bar-fill {
+            height: 100%;
+            background-color: #ff6b6b;
+            width: 100%;
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+        
+        .lang-switch {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ffe66d;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <button id="lang-switch" class="lang-switch">English</button>
+    
+    <div class="container">
+        <h1 id="game-title">タイピングゲーム</h1>
+        
+        <!-- スタート画面 -->
+        <div id="start-screen" class="screen active">
+            <h2 id="welcome-text">ようこそ！</h2>
+            <p id="instruction">せいげん時間30秒以内にできるだけたくさんの単語を入力しましょう。</p>
+            <button id="start-btn">スタート</button>
+            <button id="ranking-btn">ランキング</button>
+        </div>
+        
+        <!-- ゲーム画面 -->
+        <div id="game-screen" class="screen">
+            <div class="stats">
+                <div id="score" class="stat">スコア: 0</div>
+                <div id="time" class="stat">残り時間: 30秒</div>
+            </div>
+            
+            <div class="timer-bar">
+                <div id="timer-bar-fill" class="timer-bar-fill"></div>
+            </div>
+            
+            <div id="word-display" class="word-display"></div>
+            <div id="romaji-display" style="color: #777;"></div>
+            
+            <input type="text" id="word-input" placeholder="ここに入力" autocomplete="off">
+            
+            <p id="typing-guide">単語を入力してEnterキーを押してください</p>
+        </div>
+        
+        <!-- 結果画面 -->
+        <div id="result-screen" class="screen">
+            <h2 id="game-over">ゲーム終了！</h2>
+            <div id="final-score" class="stat">あなたのスコア: 0</div>
+            <div id="accuracy" class="stat">正確さ: 0%</div>
+            
+            <div>
+                <input type="text" id="player-name" placeholder="名前を入力" maxlength="10">
+                <button id="save-btn">スコア登録</button>
+            </div>
+            
+            <button id="retry-btn">もう一度遊ぶ</button>
+            <button id="to-ranking-btn">ランキングへ</button>
+        </div>
+        
+        <!-- ランキング画面 -->
+        <div id="ranking-screen" class="screen">
+            <h2 id="ranking-title">ランキング</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th id="rank-header">順位</th>
+                        <th id="name-header">名前</th>
+                        <th id="score-header">スコア</th>
+                        <th id="accuracy-header">正確さ</th>
+                        <th id="date-header">日付</th>
+                        <th id="date-header">言語</th>
+                    </tr>
+                </thead>
+                <tbody id="ranking-list">
+                    <!-- ランキングデータ -->
+                </tbody>
+            </table>
+            
+            <button id="back-btn">戻る</button>
+        </div>
+    </div>
+
+    <script>
+    // 多言語テキスト
+    const texts = {
+        ja: {
+            title: 'タイピングゲーム',
+            welcome: 'ようこそ！',
+            instruction: '制限時間30秒以内にできるだけたくさんの単語を入力しましょう。',
+            startButton: 'スタート',
+            rankingButton: 'ランキング',
+            score: 'スコア',
+            timeLeft: '残り時間',
+            seconds: '秒',
+            typingGuide: '表示された単語をひらがなまたはローマ字で入力してEnterキーを押してください',
+            inputPlaceholder: 'ここに入力',
+            gameOver: 'ゲーム終了！',
+            finalScore: 'あなたのスコア',
+            accuracy: '正確さ',
+            nameInput: '名前を入力',
+            saveButton: 'スコア登録',
+            retryButton: 'もう一度遊ぶ',
+            toRankingButton: 'ランキングへ',
+            rankingTitle: 'ランキング',
+            rank: '順位',
+            name: '名前',
+            date: '日付',
+            backButton: '戻る',
+            switchButton: 'English',
+            defaultName: '名無し'
+        },
+        en: {
+            title: 'Typing Game',
+            welcome: 'Welcome!',
+            instruction: 'Type as many words as possible within 30 seconds time limit.',
+            startButton: 'Start',
+            rankingButton: 'Rankings',
+            score: 'Score',
+            timeLeft: 'Time Left',
+            seconds: 'sec',
+            typingGuide: 'Type the displayed word and press Enter',
+            inputPlaceholder: 'Type here',
+            gameOver: 'Game Over!',
+            finalScore: 'Your Score',
+            accuracy: 'Accuracy',
+            nameInput: 'Enter Name',
+            saveButton: 'Save Score',
+            retryButton: 'Play Again',
+            toRankingButton: 'To Rankings',
+            rankingTitle: 'Rankings',
+            rank: 'Rank',
+            name: 'Name',
+            date: 'Date',
+            backButton: 'Back',
+            switchButton: '日本語',
+            defaultName: 'Anonymous'
+        }
+    };
+
+    // 単語リスト
+    const words = {
+        ja: ["るびー", "どうご", "おんせん", "みかん", "まつやま", "まつやまじょう", "せとないかい", "るびーかいぎ", "なつめ そうせき", ],
+        en: ["ruby", "dogo", "hot spring", "orange", "matsuyama", "matsuyama castle", "seto inland sea", "ruby kaigi", "soseki natsume"]
+    };
+
+    // ひらがな→ローマ字変換マッピング
+    const romajiMap = {
+        'あ':'a', 'い':'i', 'う':'u', 'え':'e', 'お':'o',
+        'か':'ka', 'き':'ki', 'く':'ku', 'け':'ke', 'こ':'ko',
+        'さ':'sa', 'し':'shi', 'す':'su', 'せ':'se', 'そ':'so',
+        'た':'ta', 'ち':'chi', 'つ':'tsu', 'て':'te', 'と':'to',
+        'な':'na', 'に':'ni', 'ぬ':'nu', 'ね':'ne', 'の':'no',
+        'は':'ha', 'ひ':'hi', 'ふ':'fu', 'へ':'he', 'ほ':'ho',
+        'ま':'ma', 'み':'mi', 'む':'mu', 'め':'me', 'も':'mo',
+        'や':'ya', 'ゆ':'yu', 'よ':'yo',
+        'ら':'ra', 'り':'ri', 'る':'ru', 'れ':'re', 'ろ':'ro',
+        'わ':'wa', 'を':'wo', 'ん':'n',
+        'が':'ga', 'ぎ':'gi', 'ぐ':'gu', 'げ':'ge', 'ご':'go',
+        'ざ':'za', 'じ':'ji', 'ず':'zu', 'ぜ':'ze', 'ぞ':'zo',
+        'だ':'da', 'ぢ':'ji', 'づ':'zu', 'で':'de', 'ど':'do',
+        'ば':'ba', 'び':'bi', 'ぶ':'bu', 'べ':'be', 'ぼ':'bo',
+        'ぱ':'pa', 'ぴ':'pi', 'ぷ':'pu', 'ぺ':'pe', 'ぽ':'po',
+        'きゃ':'kya', 'きゅ':'kyu', 'きょ':'kyo',
+        'しゃ':'sha', 'しゅ':'shu', 'しょ':'sho',
+        'ちゃ':'cha', 'ちゅ':'chu', 'ちょ':'cho',
+        'にゃ':'nya', 'にゅ':'nyu', 'にょ':'nyo',
+        'ひゃ':'hya', 'ひゅ':'hyu', 'ひょ':'hyo',
+        'みゃ':'mya', 'みゅ':'myu', 'みょ':'myo',
+        'りゃ':'rya', 'りゅ':'ryu', 'りょ':'ryo',
+        'ぎゃ':'gya', 'ぎゅ':'gyu', 'ぎょ':'gyo',
+        'じゃ':'ja', 'じゅ':'ju', 'じょ':'jo',
+        'びゃ':'bya', 'びゅ':'byu', 'びょ':'byo',
+        'ぴゃ':'pya', 'ぴゅ':'pyu', 'ぴょ':'pyo',
+        'っ':'', 'ー':'-'
+    };
+
+    // ゲーム状態
+    let gameState = {
+        score: 0,
+        correctWords: 0,
+        totalWords: 0,
+        timeLeft: 30,
+        currentWord: '',
+        timer: null,
+        isActive: false,
+        language: 'ja'
+    };
+
+    // DOM要素
+    const elements = {
+        langSwitch: document.getElementById('lang-switch'),
+        gameTitle: document.getElementById('game-title'),
+        welcomeText: document.getElementById('welcome-text'),
+        instruction: document.getElementById('instruction'),
+        
+        startScreen: document.getElementById('start-screen'),
+        gameScreen: document.getElementById('game-screen'),
+        resultScreen: document.getElementById('result-screen'),
+        rankingScreen: document.getElementById('ranking-screen'),
+        
+        startBtn: document.getElementById('start-btn'),
+        rankingBtn: document.getElementById('ranking-btn'),
+        saveBtn: document.getElementById('save-btn'),
+        retryBtn: document.getElementById('retry-btn'),
+        toRankingBtn: document.getElementById('to-ranking-btn'),
+        backBtn: document.getElementById('back-btn'),
+        
+        wordDisplay: document.getElementById('word-display'),
+        romajiDisplay: document.getElementById('romaji-display'),
+        wordInput: document.getElementById('word-input'),
+        
+        score: document.getElementById('score'),
+        time: document.getElementById('time'),
+        timerBarFill: document.getElementById('timer-bar-fill'),
+        typingGuide: document.getElementById('typing-guide'),
+        
+        gameOver: document.getElementById('game-over'),
+        finalScore: document.getElementById('final-score'),
+        accuracy: document.getElementById('accuracy'),
+        playerName: document.getElementById('player-name'),
+        
+        rankingTitle: document.getElementById('ranking-title'),
+        rankingList: document.getElementById('ranking-list'),
+        rankHeader: document.getElementById('rank-header'),
+        nameHeader: document.getElementById('name-header'),
+        scoreHeader: document.getElementById('score-header'),
+        accuracyHeader: document.getElementById('accuracy-header'),
+        dateHeader: document.getElementById('date-header')
+    };
+
+    // 画面切り替え
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById(screenId + '-screen').classList.add('active');
+    }
+
+    // 言語切り替え
+    function switchLanguage() {
+        gameState.language = gameState.language === 'ja' ? 'en' : 'ja';
+        updateTexts();
+        if (gameState.isActive) {
+            setNewWord();
+        }
+    }
+
+    // テキスト更新
+    function updateTexts() {
+        const t = texts[gameState.language];
+        
+        elements.gameTitle.textContent = t.title;
+        elements.welcomeText.textContent = t.welcome;
+        elements.instruction.textContent = t.instruction;
+        
+        elements.startBtn.textContent = t.startButton;
+        elements.rankingBtn.textContent = t.rankingButton;
+        elements.saveBtn.textContent = t.saveButton;
+        elements.retryBtn.textContent = t.retryButton;
+        elements.toRankingBtn.textContent = t.toRankingButton;
+        elements.backBtn.textContent = t.backButton;
+        
+        elements.score.textContent = `${t.score}: ${gameState.score}`;
+        elements.time.textContent = `${t.timeLeft}: ${gameState.timeLeft}${t.seconds}`;
+        elements.typingGuide.textContent = t.typingGuide;
+        elements.wordInput.placeholder = t.inputPlaceholder;
+        
+        elements.gameOver.textContent = t.gameOver;
+        elements.finalScore.textContent = `${t.finalScore}: ${gameState.score}`;
+        const acc = gameState.totalWords > 0 ? Math.round((gameState.correctWords / gameState.totalWords) * 100) : 0;
+        elements.accuracy.textContent = `${t.accuracy}: ${acc}%`;
+        elements.playerName.placeholder = t.nameInput;
+        
+        elements.rankingTitle.textContent = t.rankingTitle;
+        elements.rankHeader.textContent = t.rank;
+        elements.nameHeader.textContent = t.name;
+        elements.scoreHeader.textContent = t.score;
+        elements.accuracyHeader.textContent = t.accuracy;
+        elements.dateHeader.textContent = t.date;
+        
+        elements.langSwitch.textContent = t.switchButton;
+        
+        updateRankingDisplay();
+    }
+
+    // ひらがなをローマ字に変換
+    function hiraganaToRomaji(hiragana) {
+        let romaji = '';
+        let i = 0;
+        
+        while (i < hiragana.length) {
+            // 「っ」の処理
+            if (hiragana[i] === 'っ' && i < hiragana.length - 1) {
+                const nextChar = hiragana[i + 1];
+                if (romajiMap[nextChar] && romajiMap[nextChar].length > 0) {
+                    romaji += romajiMap[nextChar][0];
+                }
+                i++;
+                continue;
+            }
+            
+            // 拗音の処理
+            if (i < hiragana.length - 1 && (hiragana[i + 1] === 'ゃ' || hiragana[i + 1] === 'ゅ' || hiragana[i + 1] === 'ょ')) {
+                const compound = hiragana.substr(i, 2);
+                if (romajiMap[compound]) {
+                    romaji += romajiMap[compound];
+                    i += 2;
+                    continue;
+                }
+            }
+            
+            // 通常の文字
+            if (romajiMap[hiragana[i]]) {
+                romaji += romajiMap[hiragana[i]];
+            } else {
+                romaji += hiragana[i];
+            }
+            
+            i++;
+        }
+        
+        return romaji;
+    }
+
+    // 新しい単語をセット
+    function setNewWord() {
+        const wordList = words[gameState.language];
+        const index = Math.floor(Math.random() * wordList.length);
+        gameState.currentWord = wordList[index];
+        
+        // 単語表示
+        elements.wordDisplay.innerHTML = gameState.currentWord.split('').map((char, i) => {
+            return i === 0 ? `<span class="current-char">${char}</span>` : `<span>${char}</span>`;
+        }).join('');
+        
+        // ローマ字表示(日本語モードのみ)
+        if (gameState.language === 'ja') {
+            elements.romajiDisplay.textContent = hiraganaToRomaji(gameState.currentWord);
+            elements.romajiDisplay.style.display = 'block';
+        } else {
+            elements.romajiDisplay.style.display = 'none';
+        }
+        
+        elements.wordInput.value = '';
+    }
+
+    // ゲーム開始
+    function startGame() {
+        gameState.score = 0;
+        gameState.correctWords = 0;
+        gameState.totalWords = 0;
+        gameState.timeLeft = 30;
+        gameState.isActive = true;
+        
+        const t = texts[gameState.language];
+        elements.score.textContent = `${t.score}: ${gameState.score}`;
+        elements.time.textContent = `${t.timeLeft}: ${t.seconds}`;
+        elements.timerBarFill.style.width = '100%';
+        
+        setNewWord();
+        showScreen('game');
+        elements.wordInput.focus();
+        
+        gameState.timer = setInterval(updateTimer, 1000);
+    }
+
+    // タイマー更新
+    function updateTimer() {
+        gameState.timeLeft--;
+        
+        const t = texts[gameState.language];
+        elements.time.textContent = `${t.timeLeft}: ${gameState.timeLeft}${t.seconds}`;
+        
+        const percentage = (gameState.timeLeft / 30) * 100;
+        elements.timerBarFill.style.width = `${percentage}%`;
+        
+        if (gameState.timeLeft <= 0) {
+            endGame();
+        }
+    }
+
+    // ゲーム終了
+    function endGame() {
+        clearInterval(gameState.timer);
+        gameState.isActive = false;
+        
+        const t = texts[gameState.language];
+        const acc = gameState.totalWords > 0 ? Math.round((gameState.correctWords / gameState.totalWords) * 100) : 0;
+        
+        elements.finalScore.textContent = `${t.finalScore}: ${gameState.score}`;
+        elements.accuracy.textContent = `${t.accuracy}: ${acc}%`;
+        
+        showScreen('result');
+        elements.playerName.focus();
+    }
+
+    // スコア更新
+    function updateScore(isCorrect) {
+        if (isCorrect) {
+            gameState.score += 10;
+            gameState.correctWords++;
+        }
+        gameState.totalWords++;
+        
+        const t = texts[gameState.language];
+        elements.score.textContent = `${t.score}: ${gameState.score}`;
+    }
+
+    // 入力進捗の更新
+    function updateTypingProgress() {
+        if (!gameState.isActive) return;
+        
+        const currentInput = elements.wordInput.value;
+        
+        if (gameState.language === 'ja') {
+            updateJapaneseProgress(currentInput);
+        } else {
+            updateEnglishProgress(currentInput);
+        }
+    }
+
+    // 英語の入力進捗
+    function updateEnglishProgress(currentInput) {
+        const wordChars = gameState.currentWord.split('');
+        
+        elements.wordDisplay.innerHTML = wordChars.map((char, index) => {
+            if (index < currentInput.length) {
+                if (char === currentInput[index]) {
+                    return `<span class="typed-char">${char}</span>`;
+                } else {
+                    return `<span class="wrong-char">${char}</span>`;
+                }
+            } else if (index === currentInput.length) {
+                return `<span class="current-char">${char}</span>`;
+            } else {
+                return `<span>${char}</span>`;
+            }
+        }).join('');
+    }
+
+    // 日本語の入力進捗
+    function updateJapaneseProgress(currentInput) {
+        const expectedRomaji = hiraganaToRomaji(gameState.currentWord);
+        const wordChars = gameState.currentWord.split('');
+        
+        // ローマ字入力
+        if (currentInput === expectedRomaji.substring(0, currentInput.length)) {
+            const progress = Math.floor(currentInput.length / expectedRomaji.length * wordChars.length);
+            
+            elements.wordDisplay.innerHTML = wordChars.map((char, index) => {
+                if (index < progress) {
+                    return `<span class="typed-char">${char}</span>`;
+                } else if (index === progress) {
+                    return `<span class="current-char">${char}</span>`;
+                } else {
+                    return `<span>${char}</span>`;
+                }
+            }).join('');
+        } 
+        // ひらがな入力
+        else if (currentInput === gameState.currentWord.substring(0, currentInput.length)) {
+            updateEnglishProgress(currentInput);
+        } 
+        // 間違った入力
+        else {
+            let correctPart = 0;
+            
+            while (correctPart < currentInput.length && 
+                   (currentInput.substring(0, correctPart + 1) === expectedRomaji.substring(0, correctPart + 1) ||
+                    currentInput.substring(0, correctPart + 1) === gameState.currentWord.substring(0, correctPart + 1))) {
+                correctPart++;
+            }
+            
+            elements.wordDisplay.innerHTML = wordChars.map((char, index) => {
+                if (index < correctPart) {
+                    return `<span class="typed-char">${char}</span>`;
+                } else if (index === correctPart) {
+                    return `<span class="wrong-char">${char}</span>`;
+                } else if (index === correctPart + 1) {
+                    return `<span class="current-char">${char}</span>`;
+                } else {
+                    return `<span>${char}</span>`;
+                }
+            }).join('');
+        }
+    }
+
+    // スコア保存
+    function saveScore() {
+        const t = texts[gameState.language];
+        const playerName = elements.playerName.value.trim() || t.defaultName;
+        const acc = gameState.totalWords > 0 ? Math.round((gameState.correctWords / gameState.totalWords) * 100) : 0;
+        const date = new Date().toLocaleDateString();
+        
+        let rankings = JSON.parse(localStorage.getItem('typingGameRankings')) || [];
+        
+        rankings.push({
+            name: playerName,
+            score: gameState.score,
+            accuracy: acc,
+            date: date,
+            language: gameState.language
+        });
+        
+        rankings.sort((a, b) => b.score - a.score);
+        
+        if (rankings.length > 10) {
+            rankings = rankings.slice(0, 10);
+        }
+        
+        localStorage.setItem('typingGameRankings', JSON.stringify(rankings));
+        
+        updateRankingDisplay();
+        showScreen('ranking');
+    }
+
+    // ランキング表示
+    function updateRankingDisplay() {
+        const rankings = JSON.parse(localStorage.getItem('typingGameRankings')) || [];
+        const t = texts[gameState.language];
+        
+        elements.rankingList.innerHTML = '';
+        
+        if (rankings.length === 0) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.textContent = gameState.language === 'ja' ? 'ランキングデータがありません' : 'No ranking data yet';
+            row.appendChild(cell);
+            elements.rankingList.appendChild(row);
+            return;
+        }
+        
+        rankings.forEach((ranking, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${ranking.name}</td>
+                <td>${ranking.score}</td>
+                <td>${ranking.accuracy}%</td>
+                <td>${ranking.date}</td>
+                <td>${ranking.language}</td>
+            `;
+            elements.rankingList.appendChild(row);
+        });
+    }
+
+    // イベントリスナー
+    function setupEventListeners() {
+        // ボタンイベント
+        elements.langSwitch.addEventListener('click', switchLanguage);
+        elements.startBtn.addEventListener('click', startGame);
+        elements.rankingBtn.addEventListener('click', () => {
+            updateRankingDisplay();
+            showScreen('ranking');
+        });
+        elements.saveBtn.addEventListener('click', saveScore);
+        elements.retryBtn.addEventListener('click', startGame);
+        elements.toRankingBtn.addEventListener('click', () => {
+            updateRankingDisplay();
+            showScreen('ranking');
+        });
+        elements.backBtn.addEventListener('click', () => {
+            showScreen('start');
+        });
+        
+        // 入力イベント
+        elements.wordInput.addEventListener('input', updateTypingProgress);
+        elements.wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && gameState.isActive) {
+                const typedWord = elements.wordInput.value.trim();
+                let isCorrect = false;
+                
+                if (gameState.language === 'ja') {
+                    const romaji = hiraganaToRomaji(gameState.currentWord);
+                    isCorrect = (typedWord === gameState.currentWord || typedWord === romaji);
+                } else {
+                    isCorrect = (typedWord === gameState.currentWord);
+                }
+                
+                updateScore(isCorrect);
+                setNewWord();
+            }
+        });
+    }
+
+    // 初期化
+    function init() {
+        setupEventListeners();
+        updateTexts();
+    }
+
+    // ページ読み込み時に初期化
+    window.addEventListener('load', init);
+    </script>
+</body>
+</html>
