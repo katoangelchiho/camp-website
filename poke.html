@@ -6,8 +6,8 @@
   <style>
     :root {
       --pokemon-red: #ff0000;
-      --pokemon-blue: #0b5eae;
-      --pokemon-yellow: #ffcc03;
+      --pokemon-blue: #3B4CCA;
+      --pokemon-yellow: #FFDE00;
       --pokemon-border: #B3A125;
     }
     
@@ -96,9 +96,36 @@
       box-shadow: 0 2px 0 #a00000;
     }
     
-    button:active {
-      transform: translateY(4px);
-      box-shadow: 0 0 0 #a00000;
+    .forms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .form-item {
+      text-align: center;
+      cursor: pointer;
+      border: 3px solid transparent;
+      border-radius: 10px;
+      padding: 5px;
+      transition: all 0.2s;
+    }
+    
+    .form-item:hover {
+      border-color: var(--pokemon-yellow);
+      background-color: #f5f5f5;
+    }
+    
+    .form-item img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+    
+    .form-item p {
+      font-size: 0.8rem;
+      margin: 5px 0 0 0;
     }
   </style>
 </head>
@@ -112,6 +139,10 @@
     <p id="pokemonNameEn"></p>
     <p id="pokemonTypes"></p>
     <img id="pokemonImage" src="">
+    <div id="formsContainer" style="display: none;">
+      <h3>フォーム変化</h3>
+      <div id="pokemonForms" class="forms-grid"></div>
+    </div>
     <button id="randomButton">ランダム表示</button>
   </div>
 </main>
@@ -122,6 +153,8 @@
   let pokemonNameEn = document.getElementById('pokemonNameEn');
   let pokemonTypes = document.getElementById('pokemonTypes');
   let randomButton = document.getElementById('randomButton');
+  let formsContainer = document.getElementById('formsContainer');
+  let pokemonForms = document.getElementById('pokemonForms');
 
   // ポケモンの画像を表示する要素を取得
   let pokemonImage = document.getElementById('pokemonImage');
@@ -136,6 +169,8 @@
     pokemonNameEn.textContent = "";
     pokemonTypes.textContent = "";
     pokemonImage.src = "";
+    formsContainer.style.display = "none";
+    pokemonForms.innerHTML = "";
    
     // PokéAPIからデータを取得し、名前と画像を表示
     fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonNumber}`)
@@ -183,12 +218,14 @@
         pokemonTypes.textContent = `タイプ: ${typesJa}`;
         
         // species情報を取得して日本語名を探す
-        return fetch(data.species.url);
+        const speciesPromise = fetch(data.species.url).then(res => res.json());
+        
+        // フォーム情報を取得
+        const formsPromise = fetch(`https://pokeapi.co/api/v2/pokemon-species/${data.species.name}`).then(res => res.json());
+        
+        return Promise.all([speciesPromise, formsPromise, data]);
       })
-      .then(function(response) {
-        return response.json();
-      })
-      .then(function(speciesData) {
+      .then(function([speciesData, formsSpeciesData, pokemonData]) {
         // 日本語の名前を探す
         const japaneseName = speciesData.names.find(name => name.language.name === 'ja-Hrkt' || name.language.name === 'ja');
         
@@ -197,6 +234,112 @@
           pokemonName.textContent = japaneseName.name;
         } else {
           pokemonName.textContent = '名前が見つかりません';
+        }
+        
+        // バリエーション（フォーム）を取得して表示
+        if (formsSpeciesData.varieties && formsSpeciesData.varieties.length > 1) {
+          // 複数のフォームがある場合に表示
+          formsContainer.style.display = "block";
+          
+          // 各フォームを取得して表示
+          const formPromises = formsSpeciesData.varieties.map(variety => {
+            return fetch(variety.pokemon.url)
+              .then(res => res.json())
+              .then(formData => {
+                // デフォルトフォームは現在表示しているので除外
+                if (formData.id === pokemonData.id) return null;
+                
+                // フォームの画像があるか確認
+                const sprite = formData.sprites.front_default;
+                if (!sprite) return null;
+                
+                // フォーム名を整形 (例: "pikachu-rock-star" -> "Rock Star")
+                let formName = variety.pokemon.name.replace(pokemonData.species.name + "-", "");
+                formName = formName.replace(/-/g, " ").split(" ").map(word => 
+                  word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(" ");
+                
+                // フォームがない場合（名前が同じ）は特殊なケース
+                if (formName === pokemonData.species.name || formName === "") {
+                  if (variety.pokemon.name.includes("-mega")) {
+                    formName = "メガ進化";
+                  } else if (variety.pokemon.name.includes("-gmax")) {
+                    formName = "キョダイマックス";
+                  } else if (variety.pokemon.name.includes("-alola")) {
+                    formName = "アローラのすがた";
+                  } else if (variety.pokemon.name.includes("-galar")) {
+                    formName = "ガラルのすがた";
+                  } else if (variety.pokemon.name.includes("-hisui")) {
+                    formName = "ヒスイのすがた";
+                  } else {
+                    formName = "別フォーム";
+                  }
+                }
+                
+                return { name: formName, sprite: sprite, data: formData };
+              });
+          });
+          
+          // すべてのフォームが取得できたら表示
+          Promise.all(formPromises)
+            .then(forms => {
+              // nullを除外
+              const validForms = forms.filter(form => form !== null);
+              
+              if (validForms.length > 0) {
+                // フォームを表示
+                validForms.forEach(form => {
+                  const formElement = document.createElement('div');
+                  formElement.className = 'form-item';
+                  formElement.innerHTML = `
+                    <img src="${form.sprite}" alt="${form.name}">
+                    <p>${form.name}</p>
+                  `;
+                  
+                  // フォームをクリックしたらそのポケモンの情報を表示
+                  formElement.addEventListener('click', () => {
+                    // フォームの情報を表示
+                    pokemonImage.src = form.sprite;
+                    
+                    // タイプの更新
+                    const typesJa = form.data.types.map(typeInfo => {
+                      const englishType = typeInfo.type.name;
+                      const typeTranslations = {
+                        'normal': 'ノーマル',
+                        'fire': 'ほのお',
+                        'water': 'みず',
+                        'electric': 'でんき',
+                        'grass': 'くさ',
+                        'ice': 'こおり',
+                        'fighting': 'かくとう',
+                        'poison': 'どく',
+                        'ground': 'じめん',
+                        'flying': 'ひこう',
+                        'psychic': 'エスパー',
+                        'bug': 'むし',
+                        'rock': 'いわ',
+                        'ghost': 'ゴースト',
+                        'dragon': 'ドラゴン',
+                        'dark': 'あく',
+                        'steel': 'はがね',
+                        'fairy': 'フェアリー'
+                      };
+                      return typeTranslations[englishType] || englishType;
+                    }).join('、');
+                    
+                    pokemonTypes.textContent = `タイプ: ${typesJa}`;
+                    
+                    // フォーム名を表示
+                    const originalName = pokemonName.textContent;
+                    pokemonName.textContent = `${originalName} (${form.name})`;
+                  });
+                  
+                  pokemonForms.appendChild(formElement);
+                });
+              } else {
+                formsContainer.style.display = "none";
+              }
+            });
         }
       })
       .catch(function(error) {
